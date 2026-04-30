@@ -154,6 +154,17 @@ def handle_request(message):
             # Hint: dict.pop(key, None) removes and returns the value, or None if missing.
             increment_stat("get_count")
 
+            # Attempt to remove the key and retrieve its value
+            # dict.pop returns None if the key does not exist
+            value = tuple_space.pop(key, None)
+            
+            if value is not None:
+                # Return success message confirming removal
+                return f"OK ({key}, {value}) removed"
+            else:
+                # Return error message if the key was not found
+                return f"ERR {key} does not exist"
+
 
         elif op == "P":
             if len(parts) < 3:
