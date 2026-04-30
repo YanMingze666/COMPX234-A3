@@ -75,35 +75,26 @@ def handle_client(client_socket):
             # TASK 1: Read the first 3 bytes to get the message size, then read
             # the remaining (size - 3) bytes and decode to a string.
             # Hint: use receive_n(). If nothing arrives, client disconnected — break.
-            
-            # 1. Read the 3-byte message size header
-            size_header = receive_n(client_socket, 3)
-            
-            # Check if the connection is still alive
-            # An empty return value indicates the client disconnected
-            if not size_header:
+
+            # read 3 len message
+            size_data = receive_n(client_socket, 3)
+            if not size_data:
                 break
+            msg_size = int(size_data.decode())
 
-            # 2. Parse the total message size from the header
-            msg_size = int(size_header.decode('utf-8'))
-
-            # 3. Read the rest of the message payload
-            message_buffer = receive_n(client_socket, msg_size - 3).decode('utf-8')
+            # read the total message
+            message_buffer = receive_n(client_socket, msg_size).decode().strip()
 
             # Handle the request
             response = handle_request(message_buffer)
 
             # TASK 2: Build the response string with its size prepended (3 digits + space),
             # then send it. Hint: total size = len(response) + 4. Use sendall().
-            
-            # 1. Calculate the total size of the response packet
-            total_size = len(response) + 4
-
-            # 2. Format the response header with leading zeros (e.g., "015")
-            response_with_size = f"{total_size:03d} {response}".encode('utf-8')
-
-            # 3. Send the complete packet to the client
-            client_socket.sendall(response_with_size)
+            # construct response with len
+            resp_len = len(response)
+            resp_size_str = f"{resp_len:03d}"
+            full_response = resp_size_str + response
+            client_socket.sendall(full_response.encode())
 
     except (socket.error, ValueError):
         pass
@@ -133,37 +124,31 @@ def handle_request(message):
         if op == "R":
             # TASK 3: READ — look up key in tuple_space.
             # Return "OK (<key>, <value>) read" or "ERR <key> does not exist".
-            
-            increment_stat("read_count")
 
-            # Check if the key exists in the shared dictionary
+
+
+            increment_stat("read_count")
+            # realize the read operation
             if key in tuple_space:
-                # Retrieve the value associated with the key
                 value = tuple_space[key]
-                # Return success message with the key-value pair
                 return f"OK ({key}, {value}) read"
             else:
-                # Return error message if the key is not found
                 increment_stat("error_count")
                 return f"ERR {key} does not exist"
-
 
 
         elif op == "G":
             # TASK 4: GET — remove key from tuple_space and return its value.
             # Return "OK (<key>, <value>) removed" or "ERR <key> does not exist".
             # Hint: dict.pop(key, None) removes and returns the value, or None if missing.
-            increment_stat("get_count")
 
-            # Attempt to remove the key and retrieve its value
-            # dict.pop returns None if the key does not exist
-            value = tuple_space.pop(key, None)
             
+            increment_stat("get_count")
+            # realize the get operation
+            value = tuple_space.pop(key, None)
             if value is not None:
-                # Return success message confirming removal
                 return f"OK ({key}, {value}) removed"
             else:
-                # Return error message if the key was not found
                 increment_stat("error_count")
                 return f"ERR {key} does not exist"
 
@@ -177,21 +162,14 @@ def handle_request(message):
             # Validate: len(value) <= 999 and len(key + " " + value) <= 970.
             # Return "OK (<key>, <value>) added" or "ERR <key> already exists".
             increment_stat("put_count")
-
-            # Check if the key already exists to prevent overwriting
+            # realize the put operation
+            if len(value) > 999 or (len(key) + 1 + len(value)) > 970:
+                increment_stat("error_count")
+                return "ERR Size too long"
             if key in tuple_space:
                 increment_stat("error_count")
                 return f"ERR {key} already exists"
-
-            # Validate the length of the value and the total entry size
-            # This ensures the tuple space entry fits within protocol limits
-            if len(value) > 999 or len(key + " " + value) > 970:
-                increment_stat("error_count")
-                return "ERR Value too long"
-
-            # Add the new key-value pair to the shared dictionary
             tuple_space[key] = value
-            # Return success message confirming the addition
             return f"OK ({key}, {value}) added"
 
 
@@ -206,6 +184,10 @@ def main():
         sys.exit(1)
 
     port = int(sys.argv[1])
+    # check whether the port bound is valid
+    if not (50000 <= port <= 59999):
+        print("Port must be between 50000 and 59999")
+        sys.exit(1)
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(("", port))
     server_socket.listen(5)

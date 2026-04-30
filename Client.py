@@ -35,9 +35,7 @@ def main():
             if not line:
                 continue
 
-            parts = line.split(" ", 2)
-            cmd = parts[0]
-            message = ""
+
 
             # TASK 2: Build the protocol message string to send to the server.
             # Format:  "NNN X key"        for READ / GET
