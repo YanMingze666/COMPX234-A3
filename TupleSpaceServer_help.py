@@ -76,14 +76,18 @@ def handle_client(client_socket):
             # the remaining (size - 3) bytes and decode to a string.
             # Hint: use receive_n(). If nothing arrives, client disconnected — break.
             
+            # 1. Read the 3-byte message size header
             size_header = receive_n(client_socket, 3)
-            if not size_header:
-                 break
-
             
+            # Check if the connection is still alive
+            # An empty return value indicates the client disconnected
+            if not size_header:
+                break
+
+            # 2. Parse the total message size from the header
             msg_size = int(size_header.decode('utf-8'))
 
-            
+            # 3. Read the rest of the message payload
             message_buffer = receive_n(client_socket, msg_size - 3).decode('utf-8')
 
             # Handle the request
@@ -92,8 +96,13 @@ def handle_client(client_socket):
             # TASK 2: Build the response string with its size prepended (3 digits + space),
             # then send it. Hint: total size = len(response) + 4. Use sendall().
             
+            # 1. Calculate the total size of the response packet
             total_size = len(response) + 4
+
+            # 2. Format the response header with leading zeros (e.g., "015")
             response_with_size = f"{total_size:03d} {response}".encode('utf-8')
+
+            # 3. Send the complete packet to the client
             client_socket.sendall(response_with_size)
 
     except (socket.error, ValueError):
@@ -124,7 +133,19 @@ def handle_request(message):
         if op == "R":
             # TASK 3: READ — look up key in tuple_space.
             # Return "OK (<key>, <value>) read" or "ERR <key> does not exist".
+            
             increment_stat("read_count")
+
+            # Check if the key exists in the shared dictionary
+            if key in tuple_space:
+                # Retrieve the value associated with the key
+                value = tuple_space[key]
+                # Return success message with the key-value pair
+                return f"OK ({key}, {value}) read"
+            else:
+                # Return error message if the key is not found
+                return f"ERR {key} does not exist"
+
 
 
         elif op == "G":
