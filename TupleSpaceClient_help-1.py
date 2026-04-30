@@ -22,6 +22,12 @@ def main():
     # Hint: socket.socket(socket.AF_INET, socket.SOCK_STREAM) creates the socket.
     # Then call sock.connect((hostname, port)) to connect.
 
+    # Create a TCP/IP socket object
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    
+    # Establish a connection to the server using the provided hostname and port
+    sock.connect((hostname, port))
+
 
     try:
         for line in lines:
