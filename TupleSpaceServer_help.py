@@ -176,6 +176,21 @@ def handle_request(message):
             # Return "OK (<key>, <value>) added" or "ERR <key> already exists".
             increment_stat("put_count")
 
+            # Check if the key already exists to prevent overwriting
+            if key in tuple_space:
+                return f"ERR {key} already exists"
+
+            # Validate the length of the value and the total entry size
+            # This ensures the tuple space entry fits within protocol limits
+            if len(value) > 999 or len(key + " " + value) > 970:
+                increment_stat("error_count")
+                return "ERR Value too long"
+
+            # Add the new key-value pair to the shared dictionary
+            tuple_space[key] = value
+            # Return success message confirming the addition
+            return f"OK ({key}, {value}) added"
+
 
         else:
             increment_stat("error_count")
