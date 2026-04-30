@@ -46,57 +46,56 @@ def main():
             # X is "R" for READ and "G" for GET.
             # Hint: for READ/GET, size = 6 + len(key). For PUT, size = 7 + len(key) + len(value).
             # Reject lines with invalid format or key+" "+value > 970 chars.
-                        # Validate command and format
-            if len(parts) < 2:
-                print(f"Error: Invalid command format: {line}")
-                continue
 
-            # Extract key and value (if present)
+            parts = line.split(" ", 2)
+            cmd = parts[0].upper()
             key = parts[1]
-            value = parts[2] if len(parts) > 2 else ""
+            value = parts[2] if len(parts) >= 3 else ""
 
-            # Validate key length and total entry size
-            if len(key) > 999 or (cmd == "P" and (len(value) > 999 or len(key + " " + value) > 970)):
-                print(f"Error: Key or value too long: {line}")
+            # length check
+            total_length = len(key) + 1 + len(value)
+            if total_length > 970 or len(key) > 999 or len(value) > 999:
+                print(f"{line}: ERR Invalid size")
                 continue
 
-            # Construct the message based on the command type
-            if cmd in ["R", "G"]:
-                # Format for READ/GET: "NNN X key"
-                # Size calculation: 3 (size) + 1 (space) + 1 (op) + 1 (space) + len(key)
-                msg_size = 6 + len(key)
-                message = f"{msg_size:03d} {cmd} {key}"
-            elif cmd == "P":
-                # Format for PUT: "NNN P key value"
-                # Size calculation: 3 (size) + 1 (space) + 1 (op) + 1 (space) + len(key) + 1 (space) + len(value)
-                msg_size = 7 + len(key) + len(value)
-                message = f"{msg_size:03d} {cmd} {key} {value}"
+            # get the R G P
+            message_b = ""
+            if cmd == "READ":
+                message_b = f"R {key}"
+            elif cmd == "GET":
+                message_b = f"G {key}"
+            elif cmd == "PUT":
+                message_b = f"P {key} {value}"
             else:
-                print(f"Error: Unknown command: {cmd}")
+                print(f"{line}:  Unknown command")
                 continue
 
+            # calculate length and generate the pre-str
+            msg_len = len(message_b)
+            size_str = f"{msg_len:03d}"
+            full_message = f"{msg_len:03d}" + message_b
 
             # TASK 3: Send the message to the server, then receive the response.
             # - Send:    sock.sendall(message.encode())
             # - Receive: first read 3 bytes to get the response size (like the server does).
-            #            Then read the remaining (size - 3) bytes to get the response body.
+            # Then read the remaining (size - 3) bytes to get the response body.
+            # send message
+            sock.sendall(full_message.encode())
 
-            # Send the constructed message to the server
-            sock.sendall(message.encode())
+            # read 3 len message
 
-            # Receive the response from the server
             response_size_header = sock.recv(3)
-            
-            # Check if the connection is still alive
             if not response_size_header:
                 raise socket.error("Connection closed by server")
-            
-            # Parse the total response size from the header
             response_size = int(response_size_header.decode())
-            
-            # Read the remaining response body
-            response_buffer = sock.recv(response_size - 3)
 
+
+            response_buffer = b""
+            while len(response_buffer) < response_size:
+                chunk = sock.recv(response_size - len(response_buffer))
+                if not chunk:
+                    break
+                response_buffer += chunk
 
             response = response_buffer.decode().strip()
             print(f"{line}: {response}")

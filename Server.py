@@ -144,6 +144,7 @@ def handle_request(message):
                 return f"OK ({key}, {value}) read"
             else:
                 # Return error message if the key is not found
+                increment_stat("error_count")
                 return f"ERR {key} does not exist"
 
 
@@ -163,6 +164,7 @@ def handle_request(message):
                 return f"OK ({key}, {value}) removed"
             else:
                 # Return error message if the key was not found
+                increment_stat("error_count")
                 return f"ERR {key} does not exist"
 
 
@@ -178,6 +180,7 @@ def handle_request(message):
 
             # Check if the key already exists to prevent overwriting
             if key in tuple_space:
+                increment_stat("error_count")
                 return f"ERR {key} already exists"
 
             # Validate the length of the value and the total entry size
