@@ -46,6 +46,34 @@ def main():
             # X is "R" for READ and "G" for GET.
             # Hint: for READ/GET, size = 6 + len(key). For PUT, size = 7 + len(key) + len(value).
             # Reject lines with invalid format or key+" "+value > 970 chars.
+                        # Validate command and format
+            if len(parts) < 2:
+                print(f"Error: Invalid command format: {line}")
+                continue
+
+            # Extract key and value (if present)
+            key = parts[1]
+            value = parts[2] if len(parts) > 2 else ""
+
+            # Validate key length and total entry size
+            if len(key) > 999 or (cmd == "P" and (len(value) > 999 or len(key + " " + value) > 970)):
+                print(f"Error: Key or value too long: {line}")
+                continue
+
+            # Construct the message based on the command type
+            if cmd in ["R", "G"]:
+                # Format for READ/GET: "NNN X key"
+                # Size calculation: 3 (size) + 1 (space) + 1 (op) + 1 (space) + len(key)
+                msg_size = 6 + len(key)
+                message = f"{msg_size:03d} {cmd} {key}"
+            elif cmd == "P":
+                # Format for PUT: "NNN P key value"
+                # Size calculation: 3 (size) + 1 (space) + 1 (op) + 1 (space) + len(key) + 1 (space) + len(value)
+                msg_size = 7 + len(key) + len(value)
+                message = f"{msg_size:03d} {cmd} {key} {value}"
+            else:
+                print(f"Error: Unknown command: {cmd}")
+                continue
 
 
             # TASK 3: Send the message to the server, then receive the response.
